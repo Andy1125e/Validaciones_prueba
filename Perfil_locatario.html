@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro empleado</title>
+  <style>
+    /* Estilos generales para toda la página */
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f2f5;
+    }
+
+    /* Perfil locatario - contenedor superior */
+    .perfil-locatario {
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .foto-locatario {
+      width: 120px;
+      height: 120px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin-bottom: 10px;
+    }
+
+    /* Estilos tabla */
+    .tabla, table {
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    td button {
+      padding: 5px 12px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    /* Acordeones para empleados */
+    .acordeon {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .acordeon-titulo {
+      background: #003561;
+      color: white;
+      padding: 10px 15px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .acordeon-contenido {
+      display: none;
+      padding: 15px;
+      text-align: center;
+      background: #f1f1f1;
+    }
+
+    .acordeon-contenido img {
+      width: 100%;
+      max-width: 250px;
+      border-radius: 6px;
+      object-fit: cover;
+      margin: 10px 0;
+    }
+
+    /* Modal para opciones de envío */
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      width: 300px;
+      text-align: center;
+    }
+
+    .modal-box h3 {
+      margin-bottom: 15px;
+    }
+
+    .modal-box button,
+    .modal-box input[type="tel"] {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+
+    .modal-box button {
+      background-color: #003561;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Perfil locatario -->
+  <div class="perfil-locatario">
+    <img src="HI 1.png" alt="Foto Usuario" class="foto-locatario">
+    <p><strong>Nombre:</strong> </p>
+    <p><strong>Local:</strong> </p>
+    <p><strong>Organismo:</strong> </p>
+    <p><strong>No:</strong> </p>
+    <p><strong>Cel:</strong> </p>
+  </div>
+
+  <!-- Tabla para mostrar tokens disponibles -->
+  <div class="tabla">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Status</th>
+          <th>Enviar</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-enlaces"></tbody>
+    </table>
+  </div>
+
+  <!-- Contenedor para acordeones de empleados registrados -->
+  <div id="empleados-container"></div>
+
+  <!-- Modal para seleccionar opción de envío -->
+  <div id="modal" class="modal">
+    <div class="modal-box" id="modal-content"></div>
+  </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const totalLinks = 5;  // Número total de tokens
+    const tabla = document.getElementById("tabla-enlaces");
+    const contenedor = document.getElementById("empleados-container");
+    const modal = document.getElementById("modal");
+    const modalContent = document.getElementById("modal-content");
+    let currentToken = "";
+
+    // Objeto para controlar números usados en WhatsApp y evitar duplicados
+    const tokensNumeros = JSON.parse(localStorage.getItem("tokensNumeros") || "{}");
+
+    // URL base dinámica para evitar hardcodear localhost
+    const baseUrl = window.location.origin + '/Validaciones/registro_empleado.html';
+
+    // Función para eliminar la fila de la tabla según token usado
+    function eliminarFilaDeTabla(token) {
+      const filas = tabla.querySelectorAll("tr");
+      filas.forEach(fila => {
+        const btn = fila.querySelector("button");
+        if (btn && btn.onclick.toString().includes(token)) {
+          fila.remove();
+        }
+      });
+    }
+
+    // Función para crear acordeón dinámicamente cuando se registre un empleado
+    function crearAcordeon(token, datos, index) {
+      const acordeon = document.createElement("div");
+      acordeon.className = "acordeon";
+
+      const titulo = document.createElement("div");
+      titulo.className = "acordeon-titulo";
+      titulo.textContent = `${index + 1}. ${datos.nombre || "Sin nombre"}`;
+
+      const contenido = document.createElement("div");
+      contenido.className = "acordeon-contenido";
+
+      // Si los datos contienen código ventanilla, mostrar info especial
+      if (datos.codigoVentanilla) {
+        contenido.innerHTML = `
+          <p><strong>Nombre:</strong> ${datos.nombre || "No disponible"}</p>
+          <p><strong>Mensaje:</strong> ${datos.mensaje || ""}</p>
+          <p><strong>Código:</strong> ${datos.codigoVentanilla}</p>
+          <img src="${datos.imagen || 'pulsera.png'}" alt="Foto Ventanilla" style="max-width:200px; border-radius:6px; margin:10px 0;">
+        `;
+      } else {
+        // Si no es ventanilla, mostrar datos normales
+        contenido.innerHTML = `
+          <img src="ACCESO${index + 1}.png" alt="Gafete">
+          <p><strong>Nombre:</strong> ${datos.nombre}</p>
+          <p><strong>Celular:</strong> ${datos.celular}</p>
+          <button onclick="reenviarLink('${token}')">Reenviar Link</button>
+          
+        `;
+      }
+      //<button onclick="tomarFoto('${token}')">Tomar Foto de Nuevo</button>
+
+      // Función para abrir/cerrar acordeón al hacer click en el título
+      titulo.onclick = () => {
+        const visible = contenido.style.display === "block";
+        document.querySelectorAll(".acordeon-contenido").forEach(c => c.style.display = "none");
+        contenido.style.display = visible ? "none" : "block";
+      };
+
+      // Agregar acordeón al contenedor
+      acordeon.appendChild(titulo);
+      acordeon.appendChild(contenido);
+      contenedor.appendChild(acordeon);
+    }
+
+    // Recorrer tokens para construir tabla y acordeones
+    for (let i = 0; i < totalLinks; i++) {
+      const tokenKey = "token_" + i;
+      let token = localStorage.getItem(tokenKey);
+
+      // Si no existe token, crearlo y guardarlo
+      if (!token) {
+        token = Math.random().toString(36).substring(2, 10);
+        localStorage.setItem(tokenKey, token);
+      }
+
+      // Intentar obtener datos guardados para el token
+      let datos = null;
+      try {
+        datos = JSON.parse(localStorage.getItem(token));
+      } catch (e) {}
+
+      // Mostrar fila en tabla solo si NO hay datos guardados
+      if (!datos) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>Disponible</td>
+          <td><button>Enviar</button></td>
+        `;
+        const btn = tr.querySelector("button");
+        btn.onclick = () => {
+          currentToken = token;
+          abrirModal("completo", i);  // abre modal con opciones para enviar
+        };
+        tabla.appendChild(tr);
+      }
+
+      // Crear acordeón solo si hay datos guardados para el token (registro hecho)
+      if (datos) {
+        crearAcordeon(token, datos, i);
+      }
+    }
+
+    // Función para abrir modal con opciones de envío
+    function abrirModal(tipo, index) {
+      modal.classList.add("active");
+
+      if (tipo === "completo") {
+        // Modal con las tres opciones
+        modalContent.innerHTML = `
+          <h3>¿Cómo deseas enviar el link?</h3>
+          <button id="btnWhatsapp">1. WhatsApp</button>
+          <button id="btnAhora">2. Llenar ahora</button>
+          <button id="btnVentanilla">3. Ventanilla</button>
+          <button id="cancelarBtn">Cancelar</button>
+        `;
+        // Eventos botones
+        document.getElementById("btnWhatsapp").onclick = mostrarWhatsapp;
+        document.getElementById("btnAhora").onclick = () => {
+          // Abrir ventana para llenar datos
+          window.open(baseUrl + '?token=' + currentToken, '_blank', 'noopener,noreferrer');
+          eliminarFilaDeTabla(currentToken); // Ocultar fila porque se "usó"
+          cerrarModal();
+        };
+        document.getElementById("btnVentanilla").onclick = () => {
+          // Validar que token no esté ya usado
+          const datosExistentes = localStorage.getItem(currentToken);
+          if (datosExistentes) {
+            alert("Este token ya tiene datos registrados.");
+            return;
+          }
+
+          // Generar código ventanilla
+          const codigo = "VENT-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+          // Pedir nombre de la persona para registro ventanilla(esto es en lo que se conecta todo)
+          const nombreVentanilla = prompt("Ingresa el nombre de la persona para registro por ventanilla:");
+
+          if (!nombreVentanilla || nombreVentanilla.trim() === "") {
+            alert("Debe ingresar un nombre para continuar.");
+            return;
+          }
+
+          // Guardar datos ventanilla en localStorage para el token actual
+          const datosVentanilla = {
+            nombre: nombreVentanilla.trim(),
+            imagen: "ACCESO.png",
+            celular: "",
+            mensaje: "Se registró por casilla",
+            codigoVentanilla: codigo
+          };
+          localStorage.setItem(currentToken, JSON.stringify(datosVentanilla));
+
+          eliminarFilaDeTabla(currentToken);  // Ocultar fila
+          crearAcordeon(currentToken, datosVentanilla, index); // Crear acordeón dinámicamente
+
+          alert(`Código generado: ${codigo}`);
+
+          cerrarModal();
+        };
+      }
+      
+      document.getElementById("cancelarBtn").onclick = cerrarModal;
+    }
+
+    // Modal para enviar WhatsApp, validación números y evitar duplicados
+    window.mostrarWhatsapp = () => {
+      const numeroAnterior = tokensNumeros[currentToken] || "";
+      modalContent.innerHTML = `
+        <h3>Enviar por WhatsApp</h3>
+        <input type="tel" id="numero" placeholder="Número de 10 dígitos" maxlength="10" value="${numeroAnterior}" oninput="this.value=this.value.replace(/[^\\d]/g,'')">
+        <button id="enviarWhatsappBtn">Enviar por WhatsApp</button>
+        <button id="cancelarBtn">Cancelar</button>
+      `;
+      document.getElementById("enviarWhatsappBtn").onclick = () => {
+        const numero = document.getElementById("numero").value;
+        if (/^\d{10}$/.test(numero)) {
+          // Validar no repetir número en otros tokens
+          for (const [token, num] of Object.entries(tokensNumeros)) {
+            if (token !== currentToken && num === numero) {
+              alert("Este número ya fue usado en otro registro.");
+              return;
+            }
+          }
+          // Guardar número en localStorage
+          tokensNumeros[currentToken] = numero;
+          localStorage.setItem("tokensNumeros", JSON.stringify(tokensNumeros));
+
+          // Abrir WhatsApp con link del token
+          const url = `https://wa.me/52${numero}?text=Hola! Ingresa al formulario: ${baseUrl}?token=${currentToken}`;
+          window.open(url, '_blank', 'noopener,noreferrer');
+
+          eliminarFilaDeTabla(currentToken);  // Ocultar fila
+
+          cerrarModal();
+        } else {
+          alert("Número inválido. Deben ser 10 dígitos.");
+        }
+      };
+      document.getElementById("cancelarBtn").onclick = cerrarModal;
+    };
+
+    // Función para cerrar modal
+    window.cerrarModal = () => {
+      modal.classList.remove("active");
+    };
+
+    // Reenviar link abre modal solo con WhatsApp
+    window.reenviarLink = (token) => {
+      currentToken = token;
+      abrirModal("soloWhatsapp");
+    };
+
+    // Abrir ventana para tomar foto (paso 3)
+    window.tomarFoto = (token) => {
+      const url = `http://localhost/Validaciones/registro_empleado.html?token=${token}&paso=3`;
+      /*const url = `${baseUrl}?token=${token}&paso=3`;*/
+      window.open(url, '_blank', 'noopener,noreferrer');
+    };
+  });
+</script>
+
+
+</body>
+</html>
